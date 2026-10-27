@@ -1,0 +1,118 @@
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compartilhar Tela</title>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<style>
+body {
+  background:#151923;color:white;font-family:Arial;
+  text-align:center;padding:25px
+}
+input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ff922b;
+  background: #222836;
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 15px;
+}
+button {
+  padding:14px 20px;background:#ff922b;border:0;
+  border-radius:8px;font-weight:bold;cursor:pointer;
+  margin: 5px;
+}
+button:disabled {
+  background:#555;cursor:not-allowed
+}
+</style>
+</head>
+<body>
+<h1>Compartilhar Tela</h1>
+
+<div>
+  <p>Código da sala do dono:</p>
+  <input type="text" id="inputSala" value="sala-do-jogo-123">
+</div>
+
+<button id="iniciar">Compartilhar minha pontuação</button>
+<button id="parar" disabled>Parar</button>
+
+<p id="status">Pronto para conectar.</p>
+
+<script>
+const status = document.getElementById("status");
+const iniciar = document.getElementById("iniciar");
+const parar = document.getElementById("parar");
+const inputSala = document.getElementById("inputSala");
+
+const peer = new Peer();
+let stream = null;
+let chamada = null;
+
+peer.on("open", () => {
+  status.textContent = "Pronto para compartilhar.";
+});
+
+peer.on("error", e => {
+  status.textContent = "Erro de conexão: " + e.type;
+});
+
+iniciar.onclick = async () => {
+  const salaId = inputSala.value.trim();
+
+  if (!salaId) {
+    status.textContent = "Por favor, digite o código da sala.";
+    return;
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    });
+
+    status.textContent = "Conectando ao dono...";
+
+    chamada = peer.call(salaId, stream);
+
+    chamada.on("close", pararTela);
+    chamada.on("error", () => {
+      status.textContent = "Falha ao conectar à sala.";
+    });
+
+    stream.getVideoTracks()[0].onended = pararTela;
+
+    iniciar.disabled = true;
+    parar.disabled = false;
+    inputSala.disabled = true;
+    status.textContent = "Transmissão iniciada!";
+  } catch (e) {
+    status.textContent = "Partilha cancelada.";
+  }
+};
+
+function pararTela() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  if (chamada) {
+    chamada.close();
+    chamada = null;
+  }
+  iniciar.disabled = false;
+  parar.disabled = true;
+  inputSala.disabled = false;
+  status.textContent = "Compartilhamento encerrado.";
+}
+
+parar.onclick = pararTela;
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel do Dono</title>
+<style>
+body {
+  background:#151923;color:white;font-family:Arial;
+  text-align:center;padding:25px
+}
+.grid-videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+video {
+  width: 80%;
+  max-width: 600px;
+  border: 2px solid #ff922b;
+  border-radius: 8px;
+  background: #000;
+}
+.box {
+  background: #222836;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px auto;
+  max-width: 500px;
+}
+</style>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+</head>
+<body>
+<h1>Painel do Dono do Jogo</h1>
+
+<div class="box">
+  <p>Status: <span id="status">Iniciando...</span></p>
+  <p>Código da Sala: <strong id="codigoSala" style="color:#ff922b;">sala-do-jogo-123</strong></p>
+</div>
+
+<div class="grid-videos" id="containerVideos"></div>
+
+<script>
+const SALA_ID = "sala-do-jogo-123";
+const peer = new Peer(SALA_ID);
+
+const status = document.getElementById("status");
+const containerVideos = document.getElementById("containerVideos");
+
+peer.on("open", (id) => {
+  status.textContent = "Aguardando transmissões...";
+});
+
+peer.on("call", (chamada) => {
+  status.textContent = "Conectando novo jogador...";
+  chamada.answer();
+
+  chamada.on("stream", (remoteStream) => {
+    let video = document.getElementById("video-" + chamada.peer);
+    if (!video) {
+      video = document.createElement("video");
+      video.autoplay = true;
+      video.playsInline = true;
+      video.id = "video-" + chamada.peer;
+      containerVideos.appendChild(video);
+    }
+    video.srcObject = remoteStream;
+    status.textContent = "Transmissão ativa!";
+  });
+
+  chamada.on("close", () => {
+    const videoRemover = document.getElementById("video-" + chamada.peer);
+    if (videoRemover) videoRemover.remove();
+  });
+});
+
+peer.on("error", (e) => {
+  if (e.type === 'unavailable-id') {
+    status.textContent = "Erro: A sala já está aberta em outra aba ou janela.";
+  } else {
+    status.textContent = "Erro: " + e.type;
+  }
+});
+</script>
+</body>
+</html>
